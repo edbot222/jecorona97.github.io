@@ -8,11 +8,13 @@ async function sendMessage() {
   if (!message) {
     status.textContent = 'Please write a message first.';
     status.style.color = '#C04848';
+    if (typeof gtag === "function") gtag("event", "message_error", { error_type: "empty" });
     return;
   }
   if (message.length > 5000) {
     status.textContent = 'Message too long (max 5,000 characters).';
     status.style.color = '#C04848';
+    if (typeof gtag === "function") gtag("event", "message_error", { error_type: "too_long" });
     return;
   }
 
@@ -30,18 +32,38 @@ async function sendMessage() {
     if (res.ok) {
       document.getElementById('anon-form').classList.add('hidden');
       document.getElementById('success-state').classList.remove('hidden');
+      if (typeof gtag === "function") gtag("event", "message_send");
     } else {
       const data = await res.json().catch(() => ({}));
       status.textContent = data.error || 'Something went wrong. Try again.';
       status.style.color = '#C04848';
       btn.disabled = false;
+      if (typeof gtag === "function") gtag("event", "message_error", { error_type: "server" });
     }
   } catch (e) {
     status.textContent = 'Network error. Try again.';
     status.style.color = '#C04848';
     btn.disabled = false;
+    if (typeof gtag === "function") gtag("event", "message_error", { error_type: "network" });
   }
 }
+
+// Social nav link click tracking
+document.querySelector('.social-links').addEventListener('click', function(e) {
+  const link = e.target.closest('a');
+  if (!link) return;
+  const label = (link.getAttribute('aria-label') || '').toLowerCase();
+  if (typeof gtag === "function") gtag("event", "social_click", { platform: label });
+  if (label === 'resume') {
+    if (typeof gtag === "function") gtag("event", "resume_open", { method: "nav_link" });
+  }
+});
+
+// Footer reveal tracking (one-time)
+document.querySelector('.footer-sig').addEventListener('click', function handler() {
+  if (typeof gtag === "function") gtag("event", "footer_reveal");
+  this.removeEventListener('click', handler);
+});
 
 // Command Palette
 const overlay = document.getElementById('palette-overlay');
@@ -64,6 +86,7 @@ function openPalette() {
   activeIndex = 0;
   updateActive();
   paletteInput.focus();
+  if (typeof gtag === "function") gtag("event", "palette_open");
 }
 
 function closePalette() {
@@ -94,6 +117,10 @@ function executeAction(action) {
   const cmd = commands.find(c => c.action === action);
   if (!cmd) return;
   closePalette();
+  if (typeof gtag === "function") gtag("event", "palette_command", { command: action });
+  if (action === 'resume') {
+    if (typeof gtag === "function") gtag("event", "resume_open", { method: "command_palette" });
+  }
   if (cmd.url) {
     window.open(cmd.url, '_blank', 'noopener');
   } else if (cmd.fn) {
